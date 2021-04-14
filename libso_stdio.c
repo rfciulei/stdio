@@ -1,4 +1,4 @@
-#include "util/so_stdio.h"
+#include "libso_stdio.h"
 
 #include <string.h> // strcmp
 
@@ -6,16 +6,6 @@
 #include <sys/stat.h>  // open
 #include <sys/types.h> // open
 #include <unistd.h>    // close, lseek, read, write
-
-#define BUFFER_SIZE 4096
-#define MODE 0644
-
-typedef struct _so_file {
-	int fd;				   /* file descriptor */
-	unsigned char buffer[BUFFER_SIZE]; /* read / write buffer */
-	long cursor; /* current position in file [0,seek_set]*/
-	int last_op;
-} SO_FILE;
 
 // DONE - kind of tested
 FUNC_DECL_PREFIX SO_FILE *so_fopen(const char *pathname, const char *mode)
@@ -78,24 +68,42 @@ FUNC_DECL_PREFIX int so_fileno(SO_FILE *stream)
 	return SO_EOF;
 };
 
+// DONE kind of tested
 FUNC_DECL_PREFIX int so_fgetc(SO_FILE *stream)
 {
-	if (stream->cursor == 0) {
-		read(stream->fd, stream->buffer, 4096);
-	}
+	// first syscall
+	if (stream->cursor == 0)
+		read(stream->fd, stream->buffer, BUFFER_SIZE);
 
-	if (stream->cursor == 4096) {
-		lseek(stream->fd, 4096, SEEK_SET);
-		read(stream->fd, stream->buffer, 4096);
+	// syscall read everytime we reach the end of the buffer
+	if (stream->cursor == BUFFER_SIZE) {
+		read(stream->fd, stream->buffer, BUFFER_SIZE);
 		stream->cursor = 0;
 	}
 
 	int ret = stream->buffer[stream->cursor];
-
 	stream->cursor++;
 
 	return ret;
 }
+
+/*
+ * ptr − pointer to a block of memory with a minimum size of
+ * size*nmemb bytes.
+ *
+ * size − size in bytes of each element to be read.
+ *
+ * nmemb − number of elements, each one with a size of size bytes
+ *
+ * stream − pointer to a FILE object that specifies an input stream.
+ *
+ */
+
+FUNC_DECL_PREFIX size_t so_fread(void *ptr, size_t size, size_t nmemb,
+				 SO_FILE *stream)
+{
+	return 0;
+};
 
 FUNC_DECL_PREFIX int so_fflush(SO_FILE *stream) { return 0; };
 
@@ -107,21 +115,13 @@ FUNC_DECL_PREFIX int so_fseek(SO_FILE *stream, long offset, int whence)
 FUNC_DECL_PREFIX long so_ftell(SO_FILE *stream) { return 0; };
 
 FUNC_DECL_PREFIX
-size_t so_fread(void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
-{
-	return 0;
-};
-
-FUNC_DECL_PREFIX
 size_t so_fwrite(const void *ptr, size_t size, size_t nmemb, SO_FILE *stream)
 {
 	return 0;
 };
-
 FUNC_DECL_PREFIX int so_fputc(int c, SO_FILE *stream) { return 0; };
 
 FUNC_DECL_PREFIX int so_feof(SO_FILE *stream) { return 0; };
-
 FUNC_DECL_PREFIX int so_ferror(SO_FILE *stream) { return 0; };
 
 /* Processes */
